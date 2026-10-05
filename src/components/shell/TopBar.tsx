@@ -1,4 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { m } from 'motion/react'
+import { EASE_OUT } from '@/lib/motion'
+import { warp } from '@/components/fx/warp'
 import { BookOpen, Plus, Search, Wallet } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { palette, toggleWallet, wallet } from '@/lib/session'
@@ -13,8 +16,14 @@ import { Button } from '@/components/ui/Button'
 export function TopBar() {
   const address = wallet.use()
   const navigate = useNavigate()
+  const covered = warp.use().phase === 'out'
   return (
-    <header className="sticky top-0 z-40 bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur-xl">
+    <m.header
+      className="sticky top-0 z-40 bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur-xl"
+      initial={false}
+      animate={covered ? { y: -16, opacity: 0 } : { y: 0, opacity: 1 }}
+      transition={{ duration: 0.8, delay: covered ? 0 : 0.25, ease: EASE_OUT }}
+    >
       <a href="#content" className="sr-only z-50 rounded-control bg-accent-strong px-4 py-2 text-on-accent focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
         Skip to content
       </a>
@@ -67,6 +76,6 @@ export function TopBar() {
           </Button>
         </div>
       </div>
-    </header>
+    </m.header>
   )
 }

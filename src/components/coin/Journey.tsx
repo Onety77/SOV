@@ -1,4 +1,6 @@
 import { Check, Lock } from 'lucide-react'
+import { m } from 'motion/react'
+import { EASE_OUT } from '@/lib/motion'
 import type { Coin } from '@/lib/types'
 import { cn } from '@/lib/cn'
 import { columns } from '@/lib/board'
@@ -32,8 +34,16 @@ export function Journey({ coin, now, className }: { coin: Coin; now: number; cla
         const current = i === at && at !== 3 ? true : i === 3 && at === 3
         return (
           <li key={col.stage} className="relative grid grid-cols-[28px_1fr] gap-x-3.5 pb-5 last:pb-0">
-            {i < 3 && <span aria-hidden className={cn('absolute top-8 bottom-0 left-[13.5px] w-px', i < at ? 'bg-accent' : 'bg-line-2')} />}
-            <span
+            {i < 3 && (
+              <span aria-hidden className="absolute top-8 bottom-0 left-[13.5px] w-px bg-line-2">
+                {/* the path fills down to where the coin is now */}
+                {i < at && <m.span className="absolute inset-0 origin-top bg-accent" initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: 0.45, delay: 0.35 + i * 0.3, ease: EASE_OUT }} />}
+              </span>
+            )}
+            <m.span
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 24, delay: 0.25 + i * 0.3 }}
               aria-hidden
               className={cn(
                 'relative grid size-7 place-items-center rounded-full font-mono text-[11px]',
@@ -43,7 +53,7 @@ export function Journey({ coin, now, className }: { coin: Coin; now: number; cla
               )}
             >
               {done(i) && !current ? <Check className="size-3.5" strokeWidth={3} /> : i > at ? i === 3 ? <Lock className="size-3" /> : col.n : <span className="breathe size-1.5 rounded-full bg-accent" />}
-            </span>
+            </m.span>
             <div className="min-w-0 pt-0.5">
               <p className={cn('text-[15px] font-semibold', i > at && 'text-ink-2')}>
                 <span className="sr-only">{done(i) && !current ? 'Done: ' : current ? 'Now: ' : 'Ahead: '}</span>

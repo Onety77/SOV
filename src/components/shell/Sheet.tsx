@@ -93,7 +93,15 @@ export function Sheet({ label, onClose, footer, head, width = 620, children }: P
             <X className="size-4" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-8 sm:px-6">{children}</div>
+        {/* the contents follow the panel in, a beat behind */}
+        <m.div
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-8 sm:px-6"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.14, ease: EASE_OUT }}
+        >
+          {children}
+        </m.div>
         {footer && <div className="shrink-0 border-t border-line px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom,0px))] sm:px-6">{footer}</div>}
       </m.div>
     </div>,

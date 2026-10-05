@@ -21,5 +21,3 @@ export const startWarp = (snap: Snapshot | null) => {
 /** False while the screen is still covered by the transition. */
 export const useArrived = () => warp.use().phase !== 'out'
 
-/** Seconds into the transition when each thing happens. */
-export const T = { navigate: 0.95, reveal: 1.6, end: 2.5 } as const

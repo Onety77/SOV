@@ -5,7 +5,7 @@ import { AnimatePresence, m } from 'motion/react'
 import { ArrowRight, BookOpen, CornerDownLeft, Plus, RotateCcw, Search, Wallet } from 'lucide-react'
 import type { Stage } from '@/lib/types'
 import { cn } from '@/lib/cn'
-import { EASE_OUT, EASE_UI } from '@/lib/motion'
+import { EASE_OUT, EASE_UI, SPRING_UI } from '@/lib/motion'
 import { columns } from '@/lib/board'
 import { useNow } from '@/lib/clock'
 import { usd } from '@/lib/format'
@@ -169,10 +169,12 @@ function Panel({ onClose }: { onClose: () => void }) {
                   aria-selected={pick === i}
                   onMouseMove={() => setActive(i)}
                   onClick={it.run}
-                  className={cn('relative flex cursor-pointer items-center gap-3 rounded-[11px] px-3 py-2.5', pick === i && 'bg-raised')}
+                  className="relative flex cursor-pointer items-center gap-3 rounded-[11px] px-3 py-2.5"
                 >
-                  <span className="grid size-8 shrink-0 place-items-center rounded-[9px] text-ink-2">{it.icon}</span>
-                  <span className="min-w-0 flex-1">
+                  {/* one highlight that glides between rows as you move */}
+                  {pick === i && <m.span layoutId="palette-on" className="absolute inset-0 rounded-[11px] bg-raised" transition={SPRING_UI} />}
+                  <span className="relative grid size-8 shrink-0 place-items-center rounded-[9px] text-ink-2">{it.icon}</span>
+                  <span className="relative min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-medium">
                       <Highlight text={it.label} query={it.group === 'Coins' ? q : ''} />
                       {it.text && (
@@ -183,7 +185,7 @@ function Panel({ onClose }: { onClose: () => void }) {
                     </span>
                     {it.hint && <span className="block truncate text-[12px] text-ink-3">{it.hint}</span>}
                   </span>
-                  {it.aside}
+                  <span className="relative">{it.aside}</span>
                   <AnimatePresence>
                     {pick === i && wide && (
                       <m.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15, ease: EASE_UI }} className="text-ink-3">

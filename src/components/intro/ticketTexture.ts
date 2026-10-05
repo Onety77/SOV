@@ -48,7 +48,7 @@ const BASE_A = rgba(82, 42, 214)
 const BASE_B = rgba(101, 56, 240)
 const SPECK = rgba(170, 140, 255)
 
-export interface Texture {
+interface Texture {
   w: number
   h: number
   image: ImageData

@@ -8,13 +8,14 @@ import { columns, order, type Gate } from '@/lib/board'
 import { useNow } from '@/lib/clock'
 import { clock, two } from '@/lib/format'
 import { useQuotes } from '@/lib/live'
-import { EASE_OUT, EASE_UI, SPRING_UI } from '@/lib/motion'
+import { EASE_IN_OUT, EASE_OUT, EASE_UI, SPRING_UI } from '@/lib/motion'
 import { opensAt, stageOf } from '@/lib/readiness'
 import { INITIAL_LEVERAGE } from '@/lib/rules'
 import { focusStage, landed, useCoins } from '@/lib/session'
 import { useMedia } from '@/lib/useMedia'
 import { useArrived } from '@/components/fx/warp'
 import { CoinMark } from '@/components/ui/CoinMark'
+import { CountUp } from '@/components/motion/CountUp'
 import { CoinCard } from './CoinCard'
 
 /**
@@ -28,7 +29,6 @@ export function Board() {
   const quotes = useQuotes()
   const wide = useMedia('(min-width: 1024px)')
   const arrived = useArrived()
-  const just = landed.use()
   const scroller = useRef<HTMLDivElement>(null)
   const strip = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
@@ -36,7 +36,26 @@ export function Board() {
 
   // live raise on the curve feeds progress and ordering
   const live = useMemo(() => all.map((c) => (c.raisedSol !== undefined && quotes[c.id]?.raisedSol !== undefined ? { ...c, raisedSol: quotes[c.id].raisedSol } : c)), [all, quotes])
-  const byStage = columns.map((col) => order(col.stage, live.filter((c) => stageOf(c, now) === col.stage), now))
+  const just = landed.use()
+  // a coin you just launched lands at the top of its column, glowing, then glides to its place
+  const byStage = columns.map((col) => {
+    const list = order(col.stage, live.filter((c) => stageOf(c, now) === col.stage), now)
+    const mine = list.findIndex((c) => c.id === just)
+    return mine > 0 ? [list[mine], ...list.slice(0, mine), ...list.slice(mine + 1)] : list
+  })
+
+  // a coin crossing a gate: compare with where every coin was last render, and pulse the
+  // gate it just passed (the counter is the animation's key)
+  const placement = byStage.map((l) => l.map((c) => c.id).join()).join('|')
+  const [seen, setSeen] = useState(placement)
+  const [pulses, setPulses] = useState([0, 0, 0])
+  if (seen !== placement) {
+    const before = new Map(seen.split('|').flatMap((col, i) => col.split(',').map((id) => [id, i] as const)))
+    const crossed = new Set<number>()
+    byStage.forEach((list, i) => list.forEach((c) => (before.get(c.id) ?? i) < i && crossed.add(i - 1)))
+    setSeen(placement)
+    if (crossed.size) setPulses((p) => p.map((v, i) => (crossed.has(i) ? v + 1 : v)))
+  }
 
   // a coin you just launched: bring the curve column into view and let its card glow a while
   useEffect(() => {
@@ -77,11 +96,11 @@ export function Board() {
   }
 
   const next = byStage[2][0]
-  const stats = [
-    ['Launches', two(all.length)],
-    ['Graduated', two(all.filter((c) => c.graduatedAt).length)],
-    ['Perps live', two(byStage[3].length)],
-    ['Max leverage', `${INITIAL_LEVERAGE.toFixed(1)}x`],
+  const stats: [string, number, (n: number) => string][] = [
+    ['Launches', all.length, (n) => two(Math.round(n))],
+    ['Graduated', all.filter((c) => c.graduatedAt).length, (n) => two(Math.round(n))],
+    ['Perps live', byStage[3].length, (n) => two(Math.round(n))],
+    ['Max leverage', INITIAL_LEVERAGE, (n) => `${n.toFixed(1)}x`],
   ]
   const appear = (d: number) => ({ initial: { opacity: 0, y: 12 }, animate: arrived ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }, transition: { duration: 0.7, delay: d, ease: EASE_OUT } })
 
@@ -95,10 +114,12 @@ export function Board() {
         </m.div>
         <m.div {...appear(0.1)} className="flex flex-col gap-4 lg:items-end">
           <dl className="flex flex-wrap gap-x-7 gap-y-3">
-            {stats.map(([k, v]) => (
+            {stats.map(([k, v, f], i) => (
               <div key={k}>
                 <dt className="text-[12px] text-ink-3">{k}</dt>
-                <dd className="mt-0.5 font-display text-[22px] leading-none font-[620] tracking-[-0.02em] [font-stretch:105%] tabular">{v}</dd>
+                <dd className="mt-0.5 font-display text-[22px] leading-none font-[620] tracking-[-0.02em] [font-stretch:105%] tabular">
+                  <CountUp value={v} format={f} play={arrived} delay={0.15 + i * 0.07} />
+                </dd>
               </div>
             ))}
           </dl>
@@ -114,51 +135,35 @@ export function Board() {
         </m.div>
       </section>
 
-      {/* ── stage strip: column heads on wide screens, a stage switcher on phones ── */}
+      {/* ── stage strip: column heads on wide screens, flow chips on phones ── */}
       <div ref={strip} className="sticky top-14 z-30 border-y border-line bg-[color-mix(in_srgb,var(--bg)_90%,transparent)] backdrop-blur-xl lg:top-16">
         <div className="wrap">
-          <ol className={cn('relative grid', wide ? TRACKS : 'grid-cols-4')}>
-            {columns.map((col, i) => {
-              const on = wide ? flash === col.stage : active === i
-              return (
+          {wide ? (
+            <ol className={cn('relative grid', TRACKS)}>
+              {columns.map((col, i) => (
                 <Fragment key={col.stage}>
                   <li className="relative min-w-0">
-                    <button
-                      type="button"
-                      onClick={() => (wide ? light(col.stage) : goTo(i))}
-                      aria-current={!wide && active === i ? 'true' : undefined}
-                      className="relative flex w-full min-w-0 flex-col items-start py-2.5 text-left lg:py-4"
-                    >
-                      {wide ? (
-                        <>
-                          <span className="flex w-full min-w-0 items-baseline gap-2">
-                            <span className="font-mono text-[11px] text-accent-text">{col.n}</span>
-                            <span className={cn('truncate text-[15px] font-semibold transition-colors', on && 'text-accent-text')}>{col.name}</span>
-                            <span className="font-mono text-[11px] text-ink-3">{byStage[i].length}</span>
-                          </span>
-                          <span className="mt-1 block w-full truncate text-[12.5px] text-ink-3">{col.blurb}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="font-mono text-[10.5px] text-ink-3">
-                            <span className="text-accent-text">{col.n}</span> · {byStage[i].length}
-                          </span>
-                          <span className={cn('mt-0.5 block w-full truncate text-[13px] font-semibold transition-colors', !on && 'text-ink-3')}>{col.short}</span>
-                          {active === i && <m.span layoutId="strip-on" className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-accent" transition={SPRING_UI} />}
-                        </>
-                      )}
+                    <button type="button" onClick={() => light(col.stage)} className="relative flex w-full min-w-0 flex-col items-start py-4 text-left">
+                      <span className="flex w-full min-w-0 items-baseline gap-2">
+                        <span className="font-mono text-[11px] text-accent-text">{col.n}</span>
+                        <span className={cn('truncate text-[15px] font-semibold transition-colors duration-300', flash === col.stage && 'text-accent-text')}>{col.name}</span>
+                        <Count n={byStage[i].length} />
+                      </span>
+                      <span className="mt-1 block w-full truncate text-[12.5px] text-ink-3">{col.blurb}</span>
                     </button>
                   </li>
-                  {wide && col.gate && (
+                  {col.gate && (
                     <li className="relative">
-                      <Perforation />
+                      <Perforation pulse={pulses[i]} />
                       <GateButton gate={col.gate} />
                     </li>
                   )}
                 </Fragment>
-              )
-            })}
-          </ol>
+              ))}
+            </ol>
+          ) : (
+            <Chips active={active} counts={byStage.map((l) => l.length)} onPick={goTo} />
+          )}
         </div>
       </div>
 
@@ -181,7 +186,7 @@ export function Board() {
                 <ul className="grid gap-2.5">
                   <AnimatePresence initial={false} mode="popLayout">
                     {byStage[i].map((c, k) => (
-                      <Card key={c.id} coin={c} stage={col.stage} now={now} index={k} arrived={arrived} glow={c.id === just || recentlyMoved(c, now)} />
+                      <Card key={c.id} coin={c} stage={col.stage} now={now} col={i} row={k} arrived={arrived} glow={c.id === just || recentlyMoved(c, now)} />
                     ))}
                   </AnimatePresence>
                 </ul>
@@ -189,7 +194,7 @@ export function Board() {
               </section>
               {wide && col.gate && (
                 <div aria-hidden className="relative">
-                  <Perforation />
+                  <Perforation pulse={pulses[i]} long />
                 </div>
               )}
               </Fragment>
@@ -211,9 +216,25 @@ export function Board() {
 /** columns and the gate lanes between them */
 const TRACKS = 'grid-cols-[minmax(0,1fr)_32px_minmax(0,1fr)_32px_minmax(0,1fr)_32px_minmax(0,1fr)]'
 
-/** the dashed tear line a gate sits on, like the ticket's stub */
-function Perforation() {
-  return <span aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[linear-gradient(to_bottom,var(--line-2)_55%,transparent_0)] bg-[length:1px_7px]" />
+/**
+ * The dashed tear line a gate sits on, like the ticket's stub. When a coin passes this
+ * gate, a pulse of light runs down the line.
+ */
+function Perforation({ pulse, long }: { pulse?: number; long?: boolean }) {
+  return (
+    <span aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 overflow-hidden">
+      <span className="absolute inset-0 bg-[linear-gradient(to_bottom,var(--line-2)_55%,transparent_0)] bg-[length:1px_7px]" />
+      {pulse ? (
+        <m.span
+          key={pulse}
+          className="absolute inset-x-0 h-28 bg-[linear-gradient(to_bottom,transparent,var(--accent-text),transparent)]"
+          initial={{ top: '-30%', opacity: 1 }}
+          animate={{ top: '110%', opacity: [1, 1, 0] }}
+          transition={{ duration: long ? 1.6 : 0.6, delay: long ? 0.45 : 0, ease: EASE_IN_OUT }}
+        />
+      ) : null}
+    </span>
+  )
 }
 
 /** a coin that crossed into perps in the last few seconds */
@@ -222,18 +243,69 @@ const recentlyMoved = (c: Coin, now: number) => {
   return t !== undefined && now >= t && now - t < 8000
 }
 
-function Card({ coin, stage, now, index, arrived, glow }: { coin: Coin; stage: Stage; now: number; index: number; arrived: boolean; glow: boolean }) {
+/**
+ * A card on the board. On arrival the columns cascade left to right, the way coins flow,
+ * and each card's live element draws itself in. When a coin passes a gate its card glides
+ * into the next column.
+ */
+function Card({ coin, stage, now, col, row, arrived, glow }: { coin: Coin; stage: Stage; now: number; col: number; row: number; arrived: boolean; glow: boolean }) {
+  // the draw-in delay is fixed when the card first mounts; later moves don't replay it
+  const [delay] = useState(() => 0.2 + col * 0.09 + Math.min(row, 5) * 0.05)
   return (
     <m.li
       layout="position"
       layoutId={`card-${coin.id}`}
-      initial={{ opacity: 0, y: 10 }}
-      animate={arrived ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 14 }}
+      animate={arrived ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
       exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
-      transition={{ duration: 0.55, delay: arrived ? Math.min(index, 6) * 0.05 : 0, ease: EASE_OUT, layout: { duration: 0.7, ease: EASE_UI } }}
+      transition={{ duration: 0.65, delay: arrived ? delay : 0, ease: EASE_OUT, layout: { type: 'spring', stiffness: 170, damping: 26 } }}
     >
-      <CoinCard coin={coin} stage={stage} now={now} glow={glow} />
+      <CoinCard coin={coin} stage={stage} now={now} glow={glow} draw={arrived ? { delay } : false} />
     </m.li>
+  )
+}
+
+/** Phones: the stages as flow chips, like the intro's. A pill slides to the stage in view. */
+function Chips({ active, counts, onPick }: { active: number; counts: number[]; onPick: (i: number) => void }) {
+  const row = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = row.current?.querySelectorAll('button')[active]
+    el?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+  }, [active])
+  return (
+    <div ref={row} role="tablist" aria-label="Stages" className="no-scrollbar -mx-4 flex items-center gap-0.5 overflow-x-auto px-3 py-2 sm:-mx-6 sm:px-5">
+      {columns.map((col, i) => (
+        <Fragment key={col.stage}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={active === i}
+            onClick={() => onPick(i)}
+            className={cn('relative flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13.5px] font-semibold transition-colors duration-300', active === i ? 'text-ink' : 'text-ink-3')}
+          >
+            {active === i && <m.span layoutId="chip-on" className="absolute inset-0 rounded-full bg-raised ring-1 ring-accent/45 ring-inset" transition={SPRING_UI} />}
+            <span className="relative">{col.short}</span>
+            <span className={cn('relative font-mono text-[11px] font-normal transition-colors duration-300', active === i ? 'text-accent-text' : 'text-ink-3')}>
+              <Count n={counts[i]} bare />
+            </span>
+          </button>
+          {i < columns.length - 1 && <ChevronRight aria-hidden className="size-3 shrink-0 text-ink-4" />}
+        </Fragment>
+      ))}
+    </div>
+  )
+}
+
+/** A count that rolls when it changes: a coin arrived in or left a column. */
+function Count({ n, bare }: { n: number; bare?: boolean }) {
+  return (
+    <span className={cn('relative inline-flex overflow-hidden tabular', !bare && 'font-mono text-[11px] text-ink-3')}>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <m.span key={n} initial={{ y: '100%', opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: '-100%', opacity: 0 }} transition={{ duration: 0.4, ease: EASE_OUT }}>
+          {n}
+        </m.span>
+      </AnimatePresence>
+    </span>
   )
 }
 

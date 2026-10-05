@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { m, type TargetAndTransition } from 'motion/react'
+import { EASE_OUT } from '@/lib/motion'
 import { X } from 'lucide-react'
 import type { Coin, Stage } from '@/lib/types'
 import { cn } from '@/lib/cn'
@@ -13,7 +15,10 @@ import { LiveChange, LivePrice } from '@/components/market/LivePrice'
  * thing that matters at this stage: progress to graduation, the check that's failing, the
  * observation clock, or how perps are positioned.
  */
-export function CoinCard({ coin, stage, now, glow, preview }: { coin: Coin; stage: Stage; now: number; glow?: boolean; preview?: boolean }) {
+/** How a card's live element draws itself in: false renders it at rest. */
+type Draw = { delay: number } | false
+
+export function CoinCard({ coin, stage, now, glow, preview, draw = false }: { coin: Coin; stage: Stage; now: number; glow?: boolean; preview?: boolean; draw?: Draw }) {
   const body = (
     <>
       <div className="flex items-center gap-2.5">
@@ -34,19 +39,20 @@ export function CoinCard({ coin, stage, now, glow, preview }: { coin: Coin; stag
         )}
       </div>
       <div className="mt-3.5">
-        {stage === 'curve' && <Curve coin={coin} />}
+        {stage === 'curve' && <Curve coin={coin} draw={draw} />}
         {stage === 'spot' && <Blocked coin={coin} now={now} />}
-        {stage === 'observation' && <Window coin={coin} now={now} />}
-        {stage === 'perps' && <Perps coin={coin} />}
+        {stage === 'observation' && <Window coin={coin} now={now} draw={draw} />}
+        {stage === 'perps' && <Perps coin={coin} draw={draw} />}
       </div>
     </>
   )
   const cls = cn(
-    'block rounded-[14px] bg-surface p-3.5 ring-1 ring-line ring-inset transition-[box-shadow,background-color] duration-500',
-    !preview && 'hover-device:hover:bg-[#16151d] hover-device:hover:ring-line-2',
+    'block rounded-[14px] bg-surface p-3.5 ring-1 ring-line ring-inset transition-[box-shadow,background-color,translate,scale] duration-300 ease-out',
+    !preview && 'hover-device:hover:-translate-y-0.5 hover-device:hover:bg-[#16151d] hover-device:hover:ring-line-2 hover-device:hover:shadow-[0_14px_30px_-18px_rgb(0_0_0/0.9)] active:scale-[0.985]',
     glow && 'shadow-[0_0_0_1.5px_var(--accent),0_0_40px_-6px_rgb(139_92_246/0.7)]',
   )
-  if (preview) return <div className={cls}>{body}</div>
+  // the composer's preview shares the board card's identity, so on launch it flies into place
+  if (preview) return <m.div layoutId={`card-${coin.id}`} className={cls}>{body}</m.div>
   return (
     <Link to={`/markets/${coin.id}`} className={cls}>
       {body}
@@ -54,12 +60,19 @@ export function CoinCard({ coin, stage, now, glow, preview }: { coin: Coin; stag
   )
 }
 
-function Curve({ coin }: { coin: Coin }) {
+/** Motion props for a draw-in, or none when the card renders at rest. */
+const grow = (draw: Draw, from: TargetAndTransition, to: TargetAndTransition, extra = 0) =>
+  draw ? { initial: from, animate: to, transition: { duration: 0.9, delay: draw.delay + extra, ease: EASE_OUT } } : { initial: false as const }
+
+function Curve({ coin, draw }: { coin: Coin; draw: Draw }) {
   const share = curveShare(coin)
   return (
     <>
       <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-raised">
-        <div className="h-full rounded-full bg-accent transition-[width] duration-700" style={{ width: `${Math.max(2, share * 100)}%` }} />
+        {/* the fill draws in once; after that its width follows the live raise */}
+        <m.div className="h-full origin-left" {...grow(draw, { scaleX: 0 }, { scaleX: 1 }, 0.15)}>
+          <div className="h-full rounded-full bg-accent transition-[width] duration-700" style={{ width: `${Math.max(2, share * 100)}%` }} />
+        </m.div>
       </div>
       <p className="mt-2 flex justify-between font-mono text-[12px] tabular">
         <span className="text-ink-2">
@@ -93,7 +106,7 @@ function Blocked({ coin, now }: { coin: Coin; now: number }) {
   )
 }
 
-function Window({ coin, now }: { coin: Coin; now: number }) {
+function Window({ coin, now, draw }: { coin: Coin; now: number; draw: Draw }) {
   const f = windowElapsed(coin, now) / (WINDOW_H * 3_600_000)
   const r = 15
   const c = 2 * Math.PI * r
@@ -101,7 +114,10 @@ function Window({ coin, now }: { coin: Coin; now: number }) {
     <div className="flex items-center gap-3">
       <svg viewBox="0 0 36 36" className="size-9 shrink-0 -rotate-90" aria-hidden>
         <circle cx="18" cy="18" r={r} fill="none" stroke="var(--raised)" strokeWidth="3" />
-        <circle cx="18" cy="18" r={r} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - f)} className="transition-[stroke-dashoffset] duration-1000 ease-linear" />
+        {/* the ring sweeps round to the hours held, then keeps counting */}
+        <m.g {...grow(draw, { opacity: 0, rotate: -120 }, { opacity: 1, rotate: 0 }, 0.15)} style={{ transformOrigin: '18px 18px' }}>
+          <circle cx="18" cy="18" r={r} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - f)} className="transition-[stroke-dashoffset] duration-1000 ease-linear" />
+        </m.g>
       </svg>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-semibold">Perps in {span((opensAt(coin) ?? now) - now)}</p>
@@ -113,7 +129,7 @@ function Window({ coin, now }: { coin: Coin; now: number }) {
   )
 }
 
-function Perps({ coin }: { coin: Coin }) {
+function Perps({ coin, draw }: { coin: Coin; draw: Draw }) {
   const p = coin.perps
   if (!p || !p.openInterest)
     return (
@@ -124,9 +140,10 @@ function Perps({ coin }: { coin: Coin }) {
     )
   return (
     <>
+      {/* long and short grow out from where they meet */}
       <div aria-hidden className="flex h-1.5 gap-0.5 overflow-hidden rounded-full">
-        <span className="h-full rounded-l-full bg-up" style={{ width: `${p.longShare * 100}%` }} />
-        <span className="h-full flex-1 rounded-r-full bg-down" />
+        <m.span className="h-full origin-right rounded-l-full bg-up" style={{ width: `${p.longShare * 100}%` }} {...grow(draw, { scaleX: 0 }, { scaleX: 1 }, 0.15)} />
+        <m.span className="h-full flex-1 origin-left rounded-r-full bg-down" {...grow(draw, { scaleX: 0 }, { scaleX: 1 }, 0.15)} />
       </div>
       <p className="mt-2 flex justify-between font-mono text-[11.5px] tabular">
         <span className="text-ink-2">{Math.round(p.longShare * 100)}% long</span>
