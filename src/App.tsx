@@ -1,14 +1,13 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { LazyMotion, MotionConfig, domMax } from 'motion/react'
 import { Shell } from '@/components/layout/Shell'
 import { Warp } from '@/components/fx/Warp'
 import { Intro } from '@/pages/Intro'
-import { Markets } from '@/pages/Markets'
-import { Market } from '@/pages/Market'
-import { Lifecycle } from '@/pages/Lifecycle'
-import { Readiness } from '@/pages/Readiness'
-import { Launch } from '@/pages/Launch'
+import { BoardPage } from '@/pages/BoardPage'
 import { NotFound } from '@/pages/NotFound'
+import { CoinSheet } from '@/components/sheets/CoinSheet'
+import { LaunchSheet } from '@/components/sheets/LaunchSheet'
+import { HowSheet } from '@/components/sheets/HowSheet'
 
 export default function App() {
   return (
@@ -19,11 +18,14 @@ export default function App() {
           <Routes>
             <Route index element={<Intro />} />
             <Route element={<Shell />}>
-              <Route path="markets" element={<Markets />} />
-              <Route path="markets/:id" element={<Market />} />
-              <Route path="lifecycle" element={<Lifecycle />} />
-              <Route path="readiness" element={<Readiness />} />
-              <Route path="launch" element={<Launch />} />
+              <Route element={<BoardPage />}>
+                <Route path="markets" element={null} />
+                <Route path="markets/:id" element={<CoinSheet />} />
+                <Route path="launch" element={<LaunchSheet />} />
+                <Route path="how" element={<HowSheet />} />
+              </Route>
+              <Route path="lifecycle" element={<Navigate to="/how" replace />} />
+              <Route path="readiness" element={<Navigate to="/how" replace />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

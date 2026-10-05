@@ -1,6 +1,6 @@
 import type { Check, Coin, Stage } from './types'
 import { loadedAt } from '@/data/coins'
-import { CURVE_TARGET_SOL, INITIAL_LEVERAGE, MAX_DEVIATION_PCT, MIN_DEPTH_USD, ORACLE_MAX_AGE_S, WINDOW_H } from './rules'
+import { CURVE_TARGET_SOL, MAX_DEVIATION_PCT, MIN_DEPTH_USD, ORACLE_MAX_AGE_S, WINDOW_H } from './rules'
 import { span, usd } from './format'
 
 /*
@@ -68,15 +68,6 @@ export function checks(c: Coin, now: number): Check[] {
       state: done ? 'pass' : 'pending',
     },
   ]
-}
-
-/** One line on what a coin is waiting for. */
-export function nextStep(c: Coin, now: number) {
-  const s = stageOf(c, now)
-  if (s === 'curve') return `${Math.round(((c.raisedSol ?? 0) / CURVE_TARGET_SOL) * 100)}% to graduation`
-  if (s === 'spot') return !depthOk(c) ? 'Waiting on liquidity depth' : 'Waiting on the oracle'
-  if (s === 'observation') return `Perps in ${span(WINDOW_MS - windowElapsed(c, now))}`
-  return `${INITIAL_LEVERAGE}x long & short open`
 }
 
 export const curveShare = (c: Coin) => Math.min(1, (c.raisedSol ?? 0) / CURVE_TARGET_SOL)

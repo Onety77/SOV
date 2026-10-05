@@ -13,7 +13,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 /** A button, or a link that looks like one when `to` is set. */
 export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
-  { variant = 'secondary', size = 'md', to, arrow, className, children, type = 'button', ...rest },
+  { variant = 'secondary', size = 'md', to, arrow, className, children, type = 'button', 'aria-label': label, ...rest },
   ref,
 ) {
   const body = (
@@ -25,20 +25,20 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
   // in-page anchors scroll natively; routes go through the router
   if (to?.startsWith('#')) {
     return (
-      <a href={to} className={buttonClass(variant, size, className)}>
+      <a href={to} aria-label={label} className={buttonClass(variant, size, className)}>
         {body}
       </a>
     )
   }
   if (to) {
     return (
-      <Link to={to} className={buttonClass(variant, size, className)}>
+      <Link to={to} aria-label={label} className={buttonClass(variant, size, className)}>
         {body}
       </Link>
     )
   }
   return (
-    <button ref={ref} type={type} className={buttonClass(variant, size, className)} {...rest}>
+    <button ref={ref} type={type} aria-label={label} className={buttonClass(variant, size, className)} {...rest}>
       {body}
     </button>
   )

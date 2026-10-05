@@ -38,12 +38,12 @@ function Toggle<T extends string>({ id, items, value, onChange, label, tone }: {
 }
 
 /** Trade the coin: spot always, perps once readiness has passed. Nothing is sent anywhere. */
-export function TradePanel({ coin, className }: { coin: Coin; className?: string }) {
+export function TradePanel({ coin, flat, className }: { coin: Coin; flat?: boolean; className?: string }) {
   const now = useNow()
   const stage = stageOf(coin, now)
   const [market, setMarket] = useState<Market>('spot')
   return (
-    <div id="trade" className={cn('rounded-card bg-surface p-4 ring-1 ring-line ring-inset sm:p-5', className)}>
+    <div id="trade" className={cn(!flat && 'rounded-card bg-surface p-4 ring-1 ring-line ring-inset sm:p-5', className)}>
       <Toggle
         id={`mkt-${coin.id}`}
         label="Market"

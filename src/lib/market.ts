@@ -29,9 +29,6 @@ export function candles(seed: string, last: number, change: number, n = 60): Can
   return out
 }
 
-/** A short closing-price line for sparklines. */
-export const spark = (c: Coin, n = 24) => candles(c.id, c.price, c.change24h, n).map((k) => k.c)
-
 interface Trade {
   id: string
   side: 'buy' | 'sell'

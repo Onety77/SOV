@@ -1,7 +1,7 @@
 import { cn } from '@/lib/cn'
 
 /** Three rising bars: curve, spot, leverage. Each stage stands on the one before. */
-function LogoMark({ className }: { className?: string }) {
+export function LogoMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={cn('size-6', className)} aria-hidden>
       <rect x="2" y="12" width="5" height="10" rx="1.2" className="fill-accent" opacity="0.55" />

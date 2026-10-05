@@ -1,6 +1,6 @@
 import type { Coin } from './types'
 
-export interface Hit {
+interface Hit {
   coin: Coin
   field: 'symbol' | 'name' | 'creator'
 }
