@@ -1,0 +1,202 @@
+@import "tailwindcss";
+
+/*
+  SOV markets: coin-backed perpetual markets on Solana.
+
+  Colour rules:
+  - Neutrals carry ~90% of every screen: a violet-tinted near-black ground, three surface
+    steps, four inks.
+  - Violet is the brand: the mark, the primary action, eyebrow labels, the stage a coin is
+    in right now, and the particles. Nothing else.
+  - Green and red mean money and checks only: price up/down, buy/sell, a readiness check
+    that holds or fails. Always a small mark beside neutral text.
+  Checked: white on --accent-strong 4.8:1; --accent-text 7:1 on every surface;
+  ink-3 5.5:1; violet/red ΔE 93, violet/green ΔE 148, red/green ΔE 125.
+*/
+
+@custom-variant hover-device (@media (hover: hover));
+
+:root {
+  color-scheme: dark;
+  --bg: #0b0a10;
+  --surface: #121118;
+  --raised: #1a1922;
+  --hover: rgb(255 255 255 / 0.035);
+  --line: rgb(255 255 255 / 0.065);
+  --line-2: rgb(255 255 255 / 0.11);
+
+  --ink: #eeedf3;
+  --ink-2: rgb(238 237 243 / 0.72);
+  --ink-3: rgb(238 237 243 / 0.56); /* faintest text: 5.5:1 */
+  --ink-4: rgb(238 237 243 / 0.22); /* never text */
+
+  --accent: #8b5cf6;          /* marks: logo, dots, rings, particles */
+  --accent-text: #a98bff;     /* violet words: eyebrows, links */
+  --accent-strong: #7c4dff;   /* fills: primary button, white text 4.8:1 */
+  --accent-soft: rgb(139 92 246 / 0.14);
+  --on-accent: #ffffff;
+
+  --up: #2fd38a;
+  --up-soft: rgb(47 211 138 / 0.12);
+  --down: #ff5470;
+  --down-soft: rgb(255 84 112 / 0.12);
+  --on-up: #03140c;
+  --on-down: #1c0309;
+
+  --overlay: rgb(5 4 9 / 0.72);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-hover: var(--hover);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-up: var(--up);
+  --color-up-soft: var(--up-soft);
+  --color-down: var(--down);
+  --color-down-soft: var(--down-soft);
+  --color-on-up: var(--on-up);
+  --color-on-down: var(--on-down);
+}
+
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Mona Sans Variable", "Geist Variable", ui-sans-serif, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+
+  --text-display: clamp(2.25rem, 1.4rem + 3.6vw, 4.5rem);
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: -0.04em;
+  --text-h1: clamp(1.75rem, 1.3rem + 1.9vw, 2.875rem);
+  --text-h1--line-height: 1.06;
+  --text-h1--letter-spacing: -0.035em;
+  --text-h2: clamp(1.25rem, 1.05rem + 0.8vw, 1.625rem);
+  --text-h2--line-height: 1.2;
+  --text-h2--letter-spacing: -0.025em;
+
+  --radius-card: 16px;
+  --radius-control: 10px;
+}
+
+@utility tabular { font-variant-numeric: tabular-nums; }
+
+@utility wrap {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 16px;
+  @media (width >= 640px) { padding-inline: 24px; }
+  @media (width >= 1024px) { padding-inline: 32px; }
+}
+
+/* small mono caps: column heads, labels */
+@utility label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* the violet section eyebrow: MARKET MONITOR */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* a faint drafting grid, faded out at the edges */
+@utility grid-paper {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 30%, transparent 80%);
+}
+
+/*
+  Page ground, text colour and font are unlayered on purpose: a host page (an embed, a
+  preview frame) may ship its own unlayered reset, and unlayered rules beat @layer base.
+*/
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+body { margin: 0; min-height: 100svh; overflow-x: clip; }
+#root { min-height: 100svh; display: flex; flex-direction: column; }
+
+@layer base {
+  h1, h2, h3 { text-wrap: balance; }
+  h1, h2 { font-family: var(--font-display); font-weight: 640; font-stretch: 110%; }
+  .font-display { font-stretch: 110%; }
+  p { text-wrap: pretty; }
+  ::selection { background: var(--accent-strong); color: var(--on-accent); }
+  :focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
+  button:not(:disabled), [role="button"] { cursor: pointer; }
+  input::placeholder, textarea::placeholder { color: var(--ink-4); }
+  kbd { font-family: var(--font-mono); }
+}
+
+/* ───────────────── Motion ─────────────────
+   Calm and exact. Only live things keep moving: prices tick, the observation clock runs,
+   the oracle heartbeat pulses, a check in progress breathes. All stop under reduced motion. */
+
+@keyframes tick-up { from { color: var(--up); } }
+@keyframes tick-down { from { color: var(--down); } }
+.tick-up-0 { animation: tick-up 0.9s ease-out; }
+.tick-up-1 { animation: tick-up 0.9s ease-out; animation-name: tick-up, none; }
+.tick-down-0 { animation: tick-down 0.9s ease-out; }
+.tick-down-1 { animation: tick-down 0.9s ease-out; animation-name: tick-down, none; }
+
+@keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.breathe { animation: breathe 2.4s ease-in-out infinite; }
+
+@keyframes ping { 0% { transform: scale(1); opacity: 0.6; } 75%, 100% { transform: scale(2.6); opacity: 0; } }
+.ping::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: ping 2.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+/* a ring that turns: a check that is still being observed */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin-slow { animation: spin 6s linear infinite; }
+
+/* the flow arrows on the intro: a light runs along them in order */
+@keyframes run { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; color: var(--accent-text); } }
+.run { animation: run 2.8s ease-in-out infinite; }
+
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee { animation: marquee 70s linear infinite; }
+.marquee-wrap:hover .marquee, .marquee-wrap:focus-within .marquee { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .breathe, .ping::after, .spin-slow, .run, .marquee, [class*="tick-"] { animation: none !important; }
+}
+
+/* the primary call to action: a band of light crosses it every few seconds */
+@keyframes sheen { 0%, 70% { transform: translateX(-120%) skewX(-20deg); } 100% { transform: translateX(260%) skewX(-20deg); } }
+.sheen::after { content: ""; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.22), transparent); animation: sheen 5s ease-in-out 2.4s infinite; transform: translateX(-120%); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .sheen::after { animation: none; display: none; } }
