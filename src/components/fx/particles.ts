@@ -3,20 +3,15 @@ import { inside } from '@/components/intro/ticketTexture'
 
 /*
   WebGL particles for the way in. Every particle starts as one grain of the ticket, exactly
-  where it sat on screen, square and in its own colour. Five beats, all computed in the
-  vertex shader from one clock:
+  where it sat on screen, square and in its own colour, so the hand-off from the real
+  ticket is invisible. Then one quiet gesture:
 
-  1. Charge (0–0.4s)   The ticket holds; grains shiver and the tear line brightens.
-  2. Tear (0.3–1.4s)   Starting at the perforation, grains peel away on bowed 3D paths,
-                       thrown outward and toward you before they are caught.
-  3. Vortex (0.9–1.9s) They wind into a tilted ring that spins faster and tightens, with a
-                       bright core gathering at the centre, turning violet and luminous.
-  4. Dive (1.7–2.4s)   The ring swings face-on and rushes the camera. Outer grains stretch
-                       into streaks (long trails), as if we accelerate through it.
-  5. Out (2.2–2.6s)    Everything thins to nothing as the board opens behind.
+  - The stub is admitted: it slides a few pixels away from the perforation and fades.
+  - The ticket dissolves into its grain, starting at the tear: each grain drifts a little
+    toward you and up the page, softens to a dot, and fades. No glow, no spin, no flash.
 */
 
-export const BEATS = { navigate: 1.05, reveal: 2.0, open: 2.05, end: 2.75 } as const
+export const BEATS = { navigate: 0.55, reveal: 0.6, end: 1.2 } as const
 
 const VS = `
 attribute vec2 aStart;
@@ -25,7 +20,6 @@ attribute vec4 aRand;
 attribute float aText;
 uniform float uT;
 uniform vec2 uRes;
-uniform float uR;
 uniform float uSize;
 uniform float uDpr;
 uniform float uTear;
@@ -33,52 +27,32 @@ varying vec3 vColor;
 varying float vAlpha;
 varying float vE;
 const float D = 900.0;
-mat3 rotX(float a) { float c = cos(a), s = sin(a); return mat3(1., 0., 0., 0., c, s, 0., -s, c); }
-float ease(float k) { return k < .5 ? 4. * k * k * k : 1. - pow(-2. * k + 2., 3.) / 2.; }
 void main() {
   float t = uT;
   vec2 center = uRes * .5;
-  vec3 p0 = vec3(aStart - center, 0.);
+  vec3 p = vec3(aStart - center, 0.);
+  bool stub = aStart.x > uTear;
 
-  // 1. charge: a shiver that grows, strongest along the tear line
-  float charge = smoothstep(0., .4, t) * (1. - smoothstep(.35, .7, t));
-  float nearTear = exp(-abs(aStart.x - uTear) / 26.);
-  p0.xy += charge * (1. + 2. * nearTear) * vec2(sin(t * 61. + aRand.y * 40.), cos(t * 53. + aRand.z * 40.)) * 1.2;
+  // the stub tears away first: a short slide right, gone in a moment
+  float ks = smoothstep(0., .35, t);
+  // the ticket dissolves from the tear outward, each grain on its own short drift
+  float k = clamp((t - .08 - aRand.x) / .62, 0., 1.);
+  float e = 1. - pow(1. - k, 3.);
 
-  // 2. tear: peel from the perforation outward
-  float k = clamp((t - .3 - aRand.x) / 1.15, 0., 1.);
-  float e = ease(k);
+  if (stub) p.x += ks * (18. + 10. * aRand.w);
+  // a shared drift up and to the right, each grain wandering a little off it
+  vec2 wander = vec2(cos(aRand.y * 6.2832), sin(aRand.y * 6.2832)) * (6. + 16. * aRand.w);
+  p.xy += e * (vec2(16., -14.) + wander);
+  p.z += e * (120. + 160. * aRand.w);
 
-  // 3. vortex
-  float spin = t * 1.4 + t * t * 1.25;
-  bool core = aRand.z < .09;
-  float th = aRand.y + spin * (.7 + aRand.w * .6) * (core ? 1.6 : 1.);
-  float tighten = 1. - .22 * smoothstep(1., 1.85, t);
-  float r = uR * tighten * (core ? .2 + aRand.w * .14 : .82 + aRand.z * .34);
-  vec3 ring = vec3(cos(th) * r, (aRand.z - .5) * uR * (core ? .04 : .09), sin(th) * r);
-  ring = rotX(mix(1.02, 1.5708, smoothstep(.95, 1.95, t))) * ring;
-
-  // 4. dive
-  float dive = smoothstep(1.7, 2.4, t);
-  ring.z += dive * dive * D * 1.35;
-  if (aRand.w > .55) ring.xy *= 1. + dive * dive * dive * 4.5;
-
-  // bowed path: thrown outward from the tear and toward the viewer, then caught by the ring
-  vec3 away = vec3(sign(p0.x - (uTear - center.x)) * (60. + 140. * aRand.w), (aRand.z - .5) * 120., 240. + 360. * aRand.w);
-  vec3 ctrl = p0 + away;
-  vec3 p = mix(mix(p0, ctrl, e), mix(ctrl, ring, e), e);
-
-  float s = D / max(D - p.z, 1.);
+  float s = D / (D - p.z);
   vec2 sc = center + p.xy * s;
   vec2 clip = sc / uRes * 2. - 1.;
   gl_Position = vec4(clip.x, -clip.y, 0., 1.);
-  float size = uSize * mix(1., core ? .8 : .5 + aRand.w * .55, e) * s;
-  gl_PointSize = min(size, 64.) * uDpr;
+  gl_PointSize = uSize * mix(1., .7, e) * s * uDpr;
 
-  vec3 glow = core ? vec3(.8, .72, 1.) : mix(vec3(.47, .3, .96), vec3(.82, .74, 1.), aRand.w * aRand.w * aRand.w);
-  vec3 lit = mix(aColor, vec3(.85, .78, 1.), charge * nearTear * .7);
-  vColor = mix(lit, glow, smoothstep(.05, .75, e) * (1. - aText * .35));
-  vAlpha = (1. - smoothstep(D * .5, D * .97, p.z)) * (1. - smoothstep(2.2, 2.6, t)) * (core ? 1. - smoothstep(1.9, 2.1, t) : 1.);
+  vColor = aColor;
+  vAlpha = stub ? 1. - ks : 1. - smoothstep(.15, 1., k);
   vE = e;
 }`
 
@@ -89,22 +63,9 @@ varying float vAlpha;
 varying float vE;
 void main() {
   float d = length(gl_PointCoord - .5);
-  float a = mix(1., smoothstep(.5, .12, d), smoothstep(0., .3, vE)) * vAlpha;
-  float light = smoothstep(.1, .6, vE);
-  gl_FragColor = vec4(vColor * a * mix(1., .55, light), a * (1. - light * .85));
+  float a = mix(1., smoothstep(.5, .2, d), vE) * vAlpha;
+  gl_FragColor = vec4(vColor * a, a);
 }`
-
-// a full-screen quad that dims what's already drawn, so moving particles leave trails
-const FADE_VS = `attribute vec2 aP; void main() { gl_Position = vec4(aP, 0., 1.); }`
-const FADE_FS = `precision mediump float; uniform float uK; void main() { gl_FragColor = vec4(0., 0., 0., uK); }`
-
-/** How much of the last frame is wiped: all of it while it's a ticket, little in the dive. */
-function trailFor(t: number) {
-  if (t < 0.5) return 1
-  if (t < 1.65) return 0.3
-  if (t < 2.3) return 0.14
-  return 0.45
-}
 
 interface Run {
   draw: (t: number) => void
@@ -125,7 +86,7 @@ export function createParticles(canvas: HTMLCanvasElement, snap: Snapshot): Run 
   const { canvas: src, rect, cell, cuts } = snap
   const data = src.getContext('2d', { willReadFrequently: true })!.getImageData(0, 0, src.width, src.height).data
   const total = src.width * src.height
-  const budget = W < 700 ? 12000 : 26000
+  const budget = W < 700 ? 14000 : 30000
   const keep = Math.min(1, budget / total)
   const tearX = rect.left + rect.width * 0.79
   const far = rect.width * 0.85
@@ -146,7 +107,7 @@ export function createParticles(canvas: HTMLCanvasElement, snap: Snapshot): Run 
       color.push(r / 255, g / 255, b / 255)
       // the stub goes first, then the tear runs left across the ticket
       const fromTear = sx > tearX ? ((sx - tearX) / far) * 0.25 : (tearX - sx) / far
-      rand.push(Math.min(0.55, fromTear * 0.5) + Math.random() * 0.08, Math.atan2(sy - H / 2, sx - W / 2) + (Math.random() - 0.5) * 1.3, Math.random(), Math.random())
+      rand.push(Math.min(0.32, fromTear * 0.3) + Math.random() * 0.06, Math.atan2(sy - H / 2, sx - W / 2) + (Math.random() - 0.5) * 1.3, Math.random(), Math.random())
       text.push(isText)
     }
   }
@@ -169,20 +130,12 @@ export function createParticles(canvas: HTMLCanvasElement, snap: Snapshot): Run 
     return pr
   }
   let prog: WebGLProgram
-  let fade: WebGLProgram
   try {
     prog = link(VS, FS)
-    fade = link(FADE_VS, FADE_FS)
   } catch (e) {
     if (import.meta.env.DEV) console.error('warp shader', e)
     return null
   }
-
-  const quad = gl.createBuffer()!
-  gl.bindBuffer(gl.ARRAY_BUFFER, quad)
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW)
-  const fadeP = gl.getAttribLocation(fade, 'aP')
-  const fadeK = gl.getUniformLocation(fade, 'uK')
 
   const buffers: WebGLBuffer[] = []
   const attrs: { loc: number; buf: WebGLBuffer; size: number }[] = []
@@ -201,50 +154,31 @@ export function createParticles(canvas: HTMLCanvasElement, snap: Snapshot): Run 
   gl.useProgram(prog)
   const u = (name: string) => gl.getUniformLocation(prog, name)
   gl.uniform2f(u('uRes'), W, H)
-  gl.uniform1f(u('uR'), Math.min(W, H) * (W < 700 ? 0.36 : 0.3))
   gl.uniform1f(u('uSize'), size)
   gl.uniform1f(u('uDpr'), dpr)
   gl.uniform1f(u('uTear'), tearX)
   const uT = u('uT')
   gl.viewport(0, 0, canvas.width, canvas.height)
   gl.enable(gl.BLEND)
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
   gl.disable(gl.DEPTH_TEST)
   gl.clearColor(0, 0, 0, 0)
-
-  const bindParticles = () => {
-    gl.useProgram(prog)
-    gl.disableVertexAttribArray(fadeP)
-    for (const a of attrs) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, a.buf)
-      gl.enableVertexAttribArray(a.loc)
-      gl.vertexAttribPointer(a.loc, a.size, gl.FLOAT, false, 0, 0)
-    }
+  for (const a of attrs) {
+    if (a.loc < 0) continue // an attribute the shader doesn't read
+    gl.bindBuffer(gl.ARRAY_BUFFER, a.buf)
+    gl.enableVertexAttribArray(a.loc)
+    gl.vertexAttribPointer(a.loc, a.size, gl.FLOAT, false, 0, 0)
   }
 
   return {
     draw: (t) => {
-      const trail = trailFor(t)
-      if (trail >= 1) gl.clear(gl.COLOR_BUFFER_BIT)
-      else {
-        for (const a of attrs) gl.disableVertexAttribArray(a.loc)
-        gl.useProgram(fade)
-        gl.bindBuffer(gl.ARRAY_BUFFER, quad)
-        gl.enableVertexAttribArray(fadeP)
-        gl.vertexAttribPointer(fadeP, 2, gl.FLOAT, false, 0, 0)
-        gl.blendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
-        gl.uniform1f(fadeK, trail)
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
-      }
-      bindParticles()
-      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+      gl.clear(gl.COLOR_BUFFER_BIT)
       gl.uniform1f(uT, t)
       gl.drawArrays(gl.POINTS, 0, n)
     },
     dispose: () => {
       buffers.forEach((b) => gl.deleteBuffer(b))
-      gl.deleteBuffer(quad)
       gl.deleteProgram(prog)
-      gl.deleteProgram(fade)
       gl.getExtension('WEBGL_lose_context')?.loseContext()
     },
   }

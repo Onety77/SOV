@@ -13,7 +13,7 @@ import { opensAt, stageOf } from '@/lib/readiness'
 import { INITIAL_LEVERAGE } from '@/lib/rules'
 import { focusStage, landed, useCoins } from '@/lib/session'
 import { useMedia } from '@/lib/useMedia'
-import { useArrived } from '@/components/fx/warp'
+import { useArrived, warp } from '@/components/fx/warp'
 import { CoinMark } from '@/components/ui/CoinMark'
 import { CountUp } from '@/components/motion/CountUp'
 import { CoinCard } from './CoinCard'
@@ -29,6 +29,8 @@ export function Board() {
   const quotes = useQuotes()
   const wide = useMedia('(min-width: 1024px)')
   const arrived = useArrived()
+  // arriving from the intro, the page fades up as one piece; the cascade is for direct visits
+  const [calm] = useState(() => warp.get().phase !== 'idle')
   const scroller = useRef<HTMLDivElement>(null)
   const strip = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
@@ -102,7 +104,7 @@ export function Board() {
     ['Perps live', byStage[3].length, (n) => two(Math.round(n))],
     ['Max leverage', INITIAL_LEVERAGE, (n) => `${n.toFixed(1)}x`],
   ]
-  const appear = (d: number) => ({ initial: { opacity: 0, y: 12 }, animate: arrived ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }, transition: { duration: 0.7, delay: d, ease: EASE_OUT } })
+  const appear = (d: number) => (calm ? { initial: false as const } : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.7, delay: d, ease: EASE_OUT } })
 
   return (
     <div id="board">
@@ -118,7 +120,7 @@ export function Board() {
               <div key={k}>
                 <dt className="text-[12px] text-ink-3">{k}</dt>
                 <dd className="mt-0.5 font-display text-[22px] leading-none font-[620] tracking-[-0.02em] [font-stretch:105%] tabular">
-                  <CountUp value={v} format={f} play={arrived} delay={0.15 + i * 0.07} />
+                  {calm ? f(v) : <CountUp value={v} format={f} play={arrived} delay={0.15 + i * 0.07} />}
                 </dd>
               </div>
             ))}
@@ -186,7 +188,7 @@ export function Board() {
                 <ul className="grid gap-2.5">
                   <AnimatePresence initial={false} mode="popLayout">
                     {byStage[i].map((c, k) => (
-                      <Card key={c.id} coin={c} stage={col.stage} now={now} col={i} row={k} arrived={arrived} glow={c.id === just || recentlyMoved(c, now)} />
+                      <Card key={c.id} coin={c} stage={col.stage} now={now} col={i} row={k} still={calm} glow={c.id === just || recentlyMoved(c, now)} />
                     ))}
                   </AnimatePresence>
                 </ul>
@@ -248,19 +250,19 @@ const recentlyMoved = (c: Coin, now: number) => {
  * and each card's live element draws itself in. When a coin passes a gate its card glides
  * into the next column.
  */
-function Card({ coin, stage, now, col, row, arrived, glow }: { coin: Coin; stage: Stage; now: number; col: number; row: number; arrived: boolean; glow: boolean }) {
+function Card({ coin, stage, now, col, row, still, glow }: { coin: Coin; stage: Stage; now: number; col: number; row: number; still: boolean; glow: boolean }) {
   // the draw-in delay is fixed when the card first mounts; later moves don't replay it
   const [delay] = useState(() => 0.2 + col * 0.09 + Math.min(row, 5) * 0.05)
   return (
     <m.li
       layout="position"
       layoutId={`card-${coin.id}`}
-      initial={{ opacity: 0, y: 14 }}
-      animate={arrived ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
+      initial={still ? false : { opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
-      transition={{ duration: 0.65, delay: arrived ? delay : 0, ease: EASE_OUT, layout: { type: 'spring', stiffness: 170, damping: 26 } }}
+      transition={{ duration: 0.65, delay, ease: EASE_OUT, layout: { type: 'spring', stiffness: 170, damping: 26 } }}
     >
-      <CoinCard coin={coin} stage={stage} now={now} glow={glow} draw={arrived ? { delay } : false} />
+      <CoinCard coin={coin} stage={stage} now={now} glow={glow} draw={still ? false : { delay }} />
     </m.li>
   )
 }

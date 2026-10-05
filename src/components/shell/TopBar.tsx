@@ -21,8 +21,8 @@ export function TopBar() {
     <m.header
       className="sticky top-0 z-40 bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur-xl"
       initial={false}
-      animate={covered ? { y: -16, opacity: 0 } : { y: 0, opacity: 1 }}
-      transition={{ duration: 0.8, delay: covered ? 0 : 0.25, ease: EASE_OUT }}
+      animate={covered ? { opacity: 0 } : { opacity: 1 }}
+      transition={{ duration: 0.6, ease: EASE_OUT }}
     >
       <a href="#content" className="sr-only z-50 rounded-control bg-accent-strong px-4 py-2 text-on-accent focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
         Skip to content

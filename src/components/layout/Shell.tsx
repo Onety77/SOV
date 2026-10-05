@@ -8,18 +8,17 @@ import { usePaletteKeys } from '@/components/shell/usePaletteKeys'
 
 export function Shell() {
   usePaletteKeys()
-  // arriving through the vortex: the page waits out of focus behind the light, then
-  // settles into place as the light opens
+  // arriving from the intro: the page waits behind the ground, then fades up once
   const covered = warp.use().phase === 'out'
   return (
     <>
       <TopBar />
       <m.main
         id="content"
-        className="flex-1 origin-[50%_30vh]"
+        className="flex-1"
         initial={false}
-        animate={covered ? { scale: 1.06, filter: 'blur(6px)', opacity: 0.6 } : { scale: 1, filter: 'blur(0px)', opacity: 1, transitionEnd: { filter: 'none' } }}
-        transition={{ duration: 1.1, ease: EASE_OUT }}
+        animate={covered ? { opacity: 0, y: 10 } : { opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: EASE_OUT }}
       >
         <Outlet />
       </m.main>

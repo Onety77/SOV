@@ -56,20 +56,20 @@ export function Intro() {
 
   const chrome = (delay: number) => ({
     initial: { opacity: 0, y: 10 },
-    animate: leaving ? { opacity: 0, y: -10, filter: 'blur(6px)', transition: { duration: 0.4, ease: EASE_OUT } } : { opacity: 1, y: 0, filter: 'blur(0px)' },
+    animate: leaving ? { opacity: 0, transition: { duration: 0.35, ease: EASE_OUT } } : { opacity: 1, y: 0 },
     transition: { duration: 0.8, delay, ease: EASE_OUT },
   })
 
   return (
     <div className="relative isolate flex min-h-svh flex-col overflow-hidden">
       {/* drafting grid and the light the ticket sits in */}
-      {/* the grid rushes toward the camera as we go in */}
+      {/* the drafting grid behind everything */}
       <m.div
         aria-hidden
         className="grid-paper absolute inset-0 -z-10"
         initial={{ opacity: 0 }}
-        animate={leaving ? { opacity: 0, scale: 2.2 } : { opacity: 1, scale: 1 }}
-        transition={leaving ? { duration: 1.1, ease: [0.55, 0, 0.75, 0.2] } : { duration: 1.2 }}
+        animate={{ opacity: leaving ? 0 : 1 }}
+        transition={{ duration: leaving ? 0.45 : 1.2 }}
       />
       <m.div
         aria-hidden
@@ -110,7 +110,7 @@ export function Intro() {
               <m.li
                 className="flex h-10 items-center gap-2 rounded-full px-4 text-[14px] font-medium text-ink-2 ring-1 ring-line-2 ring-inset"
                 initial={{ opacity: 0, y: 10 }}
-                animate={leaving ? { opacity: 0, y: 14, filter: 'blur(6px)', transition: { duration: 0.35, delay: i * 0.03 } } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+                animate={leaving ? { opacity: 0, transition: { duration: 0.3 } } : { opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 1.0 + i * 0.09, ease: EASE_OUT }}
               >
                 <f.icon className="size-4 text-accent-text" />
